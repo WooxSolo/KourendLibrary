@@ -1,0 +1,121 @@
+html, body {
+	background: white;
+	font-family: Verdana, sans-serif;
+	margin: 0;
+    min-width: 960px;
+}
+
+input {
+	padding: 3px;
+	font-size: 16px;
+	box-sizing: border-box;
+}
+
+.menu {
+	position: fixed;
+	bottom: 0;
+	right: 0;
+	font-size: 24px;
+	z-index: 50;
+}
+
+select {
+	font-size: 16px;
+}
+
+option {
+}
+
+.wrapper {
+	max-width: 920px;
+	margin: auto;
+}
+
+.section {
+	width: 460px;
+	height: 420px;
+	float: left;
+	position: relative;
+}
+
+.book {
+	cursor: pointer;
+	padding: 3px 8px;
+	font-size: 14px;
+}
+.book:hover {
+	background: #E2E2E2;
+}
+
+.book-names {
+    position: relative;
+	border: 1px solid #CCC;
+}
+
+.book-names > div {
+	border-bottom: 1px solid #CCC;
+}
+.book-names > div:last-of-type {
+	border-bottom: none;
+}
+
+.book-data {
+    margin-top: 10px;
+    margin-bottom: 10px;
+	width: 100%;
+}
+
+.book-data-lbl {
+	float: left;
+	line-height: 29px;
+	padding-right: 12px;
+}
+
+.book-data-inp-container {
+	overflow: hidden;
+	display: block;
+}
+
+#book-data-inp {
+	width: 100%;
+	font-family: Consolas;
+}
+
+.found-book {
+	background: #00FFD0;
+}
+.found-book:hover {
+	background: #00D8AD;
+}
+
+.found-book.collected-book {
+	background: #FF973D;
+}
+.found-book.collected-book:hover {
+	background: #DB7F34;
+}
+
+.highlight {
+	box-shadow: 0 0 40px #FFEE00;
+}
+
+.book-section {
+    height: auto;
+    margin-bottom: 20px;
+    z-index: 1;
+}
+
+.section-name {
+    position: absolute;
+    top: 275px;
+    left: 290px;
+    width: 90px;
+    font-size: 24px;
+    z-index: 10;
+    text-align: center;
+    font-weight: bold;
+    color: black;
+   -webkit-text-fill-color: white;
+   -webkit-text-stroke-width: 1px;
+   -webkit-text-stroke-color: black;
+}
