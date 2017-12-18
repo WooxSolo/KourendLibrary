@@ -7,6 +7,8 @@ String.prototype.padLeft = function (n) {
 	return pad.substring(0, pad.length - this.length) + this;
 }
 
+var debug = (location.hostname === "" || location.hostname === "localhost" || location.hostname === "127.0.0.1");
+
 var books = [
 	{name:"A letter from Lord Hosidius to the Council of Elders."},
 	{name:"An extract from Eathram & Rada, by Anonymous."},
@@ -389,6 +391,8 @@ function recalculateHints() {
         index += step;
         index %= bookcasesOrderedIds.length;
     }
+    
+    var mappedBooks = [];
     var length = foundEndIndex - foundStartIndex + 1;
     if (length <= totalItems) {
         index = foundStart - (totalItems - length) * step;
@@ -403,9 +407,15 @@ function recalculateHints() {
             if (getMapBook(loc.floor, loc.x, loc.y) === -1) {
                 setMapBook(loc.floor, loc.x, loc.y, MAP_HINT);
             }
+            if (debug) {
+                mappedBooks.push(getMapBook(loc.floor, loc.x, loc.y));
+            }
             index += step;
             index %= bookcasesOrderedIds.length;
         }
+    }
+    if (debug) {
+        console.log(mappedBooks.join(","));
     }
 }
 
@@ -489,6 +499,12 @@ function unmapBook(bookId) {
 function generateCode(compress) {
     compress = false; // TODO: Always false for now
 
+    // Each 3 characters is 1 book mapping
+    // The first character is the ID of the
+    // book in base 36, or Z for manuscript
+    // The next 2 characters is the ID of the
+    // bookcase in base 36
+    
 	var code = "";
 	if (compress) {
 		code += encode(books.length, 1);
@@ -524,6 +540,10 @@ function parseCode(code) {
 	for (bookId = 0; bookId < books.length; bookId++) {
         unmapBook(bookId);
 	}
+    for (var i = 0; i < manuscripts.length; i++) {
+        unmapBookcase(manuscripts[i].pos);
+        i--;
+    }
 	bookId = -1;
 	while (pos < code.length) {
         bookId = decode(code[pos++]);
@@ -683,13 +703,13 @@ $(document).ready(function() {
 		x += start.x;
 		y += start.y;
 		
-        if (e.ctrlKey) {
+        if (debug && e.ctrlKey) {
             tempArray.push(bookcaseIds[getMapPos(floor, x, y)]);
         }
-        else if (e.shiftKey) {
+        else if (debug && e.shiftKey) {
             tempArray.splice(tempArray.length - 1, 1);
         }
-        else if (e.altKey) {
+        else if (debug && e.altKey) {
             var text = "[ " + tempArray.join(", ") + " ]";
             console.log(text);
         }
