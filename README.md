@@ -29,3 +29,6 @@ Credit to evonaabi for finding out how the library works. His explanation can be
 
 Additional info:  
 I have found out that there are only 5 different sequences that the books and manuscripts can be in. Knowing that information makes it possible to calculate the position of all books and manuscripts quicker, usually after finding 2-3 books.
+
+Note:  
+Some hints might be accidentally be mispositioned by 1 square. If some hints or auto-mappings doesn't make sense, try searching the beige bookcases nearby. I will try to fix this whenever I find out which ones are wrong.
