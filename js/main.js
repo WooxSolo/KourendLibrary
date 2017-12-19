@@ -28,6 +28,7 @@ var books = [
     {name:"The Envoy to Varlamore, by Deryk Paulson."}
 ];
 var manuscripts = [];
+var manuscriptHints = [];
 
 var MAP_EMPTY = 0;
 var MAP_BLOCK = 1;
@@ -46,7 +47,7 @@ var mapTop = "333333333333333333333333333333333333333333333333333333331411430033
 var bookcasesOrderedIds = [ 110, 116, 114, 117, 119, 130, 132, 147, 146, 145, 138, 129, 124, 123, 128, 134, 141, 140, 139, 133, 125, 109, 108, 106, 99, 101, 103, 105, 89, 87, 86, 78, 72, 58, 57, 71, 77, 85, 83, 76, 70, 56, 35, 27, 0, 2, 4, 5, 7, 9, 22, 31, 44, 43, 41, 47, 49, 59, 53, 51, 32, 23, 11, 13, 24, 33, 36, 34, 25, 20, 15, 16, 18, 26, 38, 40, 63, 69, 81, 96, 95, 74, 68, 62, 54, 67, 79, 93, 91, 90, 226, 218, 211, 202, 201, 192, 184, 175, 148, 149, 150, 151, 152, 154, 155, 168, 187, 195, 234, 238, 249, 247, 246, 245, 243, 241, 227, 213, 193, 185, 176, 181, 214, 228, 333, 327, 320, 322, 324, 328, 335, 325, 317, 316, 313, 312, 311, 308, 307, 293, 295, 297, 298, 300, 302, 303, 305, 310, 318, 332, 330, 337, 338, 339, 340, 348, 347, 346, 343, 342, 283, 281, 279, 278, 277, 276, 275, 274, 273, 272, 270, 268, 260, 261, 262, 263, 264, 265, 266, 267, 269, 271, 280, 282, 284, 292, 291, 290, 289, 288, 287, 286, 285, 239, 237, 235, 196, 188, 169, 156, 157, 158, 159, 166, 173, 171, 161, 162, 178, 183, 209, 217, 225, 233, 258, 257, 256, 254, 253, 252, 251, 545, 543, 505, 503, 494, 496, 497, 498, 500, 504, 507, 512, 522, 529, 528, 521, 516, 511, 515, 520, 532, 534, 535, 539, 540, 544, 546, 553, 551, 549, 548, 537, 523, 508, 514, 519, 524, /* <WEIRD ONES: */ 525, 515, 511, 521, 526, 529, 536, 535, 533, /* /> */ 451, 450, 449, 445, 433, 369, 350, 352, 353, 356, 357, 370, 374, 416, 434, 455, 454, 452, 411, 413, 405, 389, 385, 384, 377, 378, 380, 386, 390, 406, 415, 426, 424, 422, 441, 428, 417, 371, 359, 360, 362, 363, 368, 376, 444, 447, 464, 463, 461, 446, 437, 419, 400, 401, 402, 409, 431, 432, 421, 404, 395, 394, 392, 391, 407, 429, 442, 459, 458, 485, 483, 478, 476, 466, 467, 470, 472, 473, 475, 479, 481, 493, 491, 489, 488, 486 ];
 var tempArray = [];
 
-var hintBookcaseIds = [];
+var hints = [];
 
 var nFloors = 3;
 var nSections = 4;
@@ -59,7 +60,7 @@ var mapX = 20;
 var mapY = 18;
 var selectedBookcaseId = -1;
 var lastHoverBookcaseId = -1;
-var hoveringManuscripts = false;
+var lastHoverBookId = -1;
 
 var canvases = new Array(nFloors);
 var contextes = new Array(nFloors);
@@ -69,6 +70,7 @@ var bookcaseIds = new Array(nFloors * nSections * mapX * mapY);
 var mapPosAtBookcaseId = new Array();
 
 var paintStart = new Array(nSections);
+var requestRerender = false;
 
 var sectionStarts = [
 	{ x: 1, y: 1 },
@@ -114,8 +116,10 @@ function init() {
 	}
 	
 	for (i = 0; i < books.length; i++) {
+        books[i].id = i;
 		books[i].pos = -1;
 		books[i].collected = false;
+        books[i].hints = [];
 	}
 
     mapPosAtBookcaseId = new Array();
@@ -176,6 +180,7 @@ function init() {
 		y: midY + padd / 2
 	};
 	
+    requestRerender = true;
 	window.requestAnimationFrame(render);
 }
 
@@ -204,23 +209,16 @@ function drawMapData(floor, section) {
 	var ctx = contextes[floor];
 	
 	var highlighted = [];
+    var highlightSection = false;
 	
 	for (y = 0; y < mapY; y++) {
 		for (x = 0; x < mapX; x++) {
 			var d = getMap(floor, dx + x, dy + y);
 			if (d === MAP_BOOKCASE_1) { //Bookcase
 				ctx.fillStyle = "#FF0000";
-                var bookcaseId = mapToBookcaseId(floor, dx + x, dy + y);
-                if (bookcaseId === selectedBookcaseId || bookcaseId === lastHoverBookcaseId) {
-                    highlighted.push({ x:x, y:y });
-                }
 			}
             else if (d === MAP_BOOKCASE_2) { // Dead bookcase
-                ctx.fillStyle = "#B59090";
-                var bookcaseId = mapToBookcaseId(floor, dx + x, dy + y);
-                if (bookcaseId === selectedBookcaseId || bookcaseId === lastHoverBookcaseId) {
-                    highlighted.push({ x:x, y:y });
-                }
+                ctx.fillStyle = "#CC7272";
             }
 			else if (d === MAP_BLOCK) { //Block
 				ctx.fillStyle = "#666666";
@@ -228,6 +226,33 @@ function drawMapData(floor, section) {
 			else if (d === MAP_EMPTY) {
 				ctx.fillStyle = "#FFFFFF";
 			}
+            
+            if (d === MAP_BOOKCASE_1 || d === MAP_BOOKCASE_2) {
+                var bookcaseId = mapToBookcaseId(floor, dx + x, dy + y);
+                if (bookcaseId === selectedBookcaseId) {
+                    highlighted.push({ x:x, y:y });
+                }
+                if (bookcaseId === lastHoverBookcaseId) {
+                    highlighted.push({ x:x, y:y });
+                }
+                if (lastHoverBookId !== -1) {                    
+                    if (lastHoverBookId === MAP_MANUSCRIPT) {
+                        if (manuscriptHints.indexOf(bookcaseId) !== -1) {
+                            highlighted.push({ x:x, y:y });
+                        }
+                    }
+                    else {
+                        if (books[lastHoverBookId].pos === bookcaseId) {
+                            highlighted.push({ x:x, y:y });
+                            highlightSection = true;
+                        }
+                        if (hints[bookcaseId] && hints[bookcaseId].bookIds.indexOf(lastHoverBookId) !== -1) {
+                            highlighted.push({ x:x, y:y });
+                            highlightSection = true;
+                        }
+                    }
+                }
+            }
             
             var bookTile = getMapBook(floor, dx + x, dy + y);
 			if (bookTile >= MAP_BOOK_FIRST && bookTile <= MAP_BOOK_LAST) {
@@ -240,8 +265,9 @@ function drawMapData(floor, section) {
 			}
             else if (bookTile === MAP_MANUSCRIPT) {
                 ctx.fillStyle = "#327DFF";
-                if (hoveringManuscripts) {
+                if (lastHoverBookId === MAP_MANUSCRIPT) {
                     highlighted.push({ x:x, y:y });
+                    highlightSection = true;
                 }
             }
             else if (bookTile === MAP_HINT) {
@@ -254,6 +280,22 @@ function drawMapData(floor, section) {
 				step - 2, step - 2);
 		}
 	}
+    
+    if (highlightSection) {
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = "#000000";
+        var x = paintStart[section].x - ctx.lineWidth / 2;
+        var y = paintStart[section].y - ctx.lineWidth / 2;
+        var w = mapX * step + ctx.lineWidth;
+        var h = mapY * step + ctx.lineWidth;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
     
 	var lineW = 4;
 	ctx.strokeStyle = "#0000FF";
@@ -269,29 +311,33 @@ function drawMapData(floor, section) {
 }
 
 function render() {
-	for (var i = 0; i < contextes.length; i++) {
-		var ctx = contextes[i];
-		ctx.fillStyle = "#FFFFFF";
-		ctx.fillRect(0, 0, sectionSizeX, sectionSizeY);
-	}
+    if (requestRerender) {
+        for (var i = 0; i < contextes.length; i++) {
+            var ctx = contextes[i];
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, sectionSizeX, sectionSizeY);
+        }
 
-	for (var floor = 0; floor < nFloors; floor++) {
-		for (var sec = 0; sec < nSections; sec++) {
-			if (floor !== 0 || sec !== 3) {
-				drawMapBorder(floor, paintStart[sec].x, paintStart[sec].y, mapX, mapY);
-				drawMapData(floor, sec);
-			}
-		}		
-	}
-	
-	for (var i = 0; i < books.length; i++) {
-		if (books[i].pos != -1) {
-			$(".book").eq(i).addClass("found-book");
-		}
-		else {
-			$(".book").eq(i).removeClass("found-book");
-		}
-	}
+        for (var floor = 0; floor < nFloors; floor++) {
+            for (var sec = 0; sec < nSections; sec++) {
+                if (floor !== 0 || sec !== 3) {
+                    drawMapBorder(floor, paintStart[sec].x, paintStart[sec].y, mapX, mapY);
+                    drawMapData(floor, sec);
+                }
+            }
+        }
+        
+        for (var i = 0; i < books.length; i++) {
+            if (books[i].pos != -1) {
+                $(".book").eq(i).addClass("found-book");
+            }
+            else {
+                $(".book").eq(i).removeClass("found-book");
+            }
+        }
+        requestRerender = false;
+    }
+    window.requestAnimationFrame(render);
 }
 
 function getMap(floor, x, y) {
@@ -331,97 +377,173 @@ function selectBookcase(bookcaseId) {
         $(".book-section").trigger("resize");
 	}
     
-    window.requestAnimationFrame(render);
+    requestRerender = true;
 }
 
-function recalculateHints() {
-    var weirdBookcaseIds = [525, 515, 511, 521, 526, 529, 536, 535, 533];
-
+function testSequence(sequence, bookcaseOrderIndex, foundItemsCount) {
     var step = 13;
-    var totalItems = books.length + 10;
-    for (var i = 0; i < hintBookcaseIds.length; i++) {
-        var loc = mapPosAtBookcaseId[hintBookcaseIds[i]];
-        if (getMapBook(loc.floor, loc.x, loc.y) === MAP_HINT) {
-            setMapBook(loc.floor, loc.x, loc.y, -1);
-        }
-    }
-    hintBookcaseIds = [];
     
-    var index = -1;
-    for (var i = 0; i < bookcasesOrderedIds.length; i++) {
-        if (weirdBookcaseIds.indexOf(bookcasesOrderedIds[i]) !== -1) {
-            // Skip weird bookcase ids for simplicity
-            // It should rarely matter anyway
-            continue;
-        }
-        var loc = mapPosAtBookcaseId[bookcasesOrderedIds[i]];
-        if (getMapBook(loc.floor, loc.x, loc.y) !== -1) {
-            index = i;
-            break;
-        }
-    }
-    if (index === -1) {
-        return;
-    }
-    
-    index -= (totalItems - 1) * step;
-    while (index < 0) {
-        index += bookcasesOrderedIds.length;
-    }
-    
-    var foundStart = -1, foundEnd = -1;
-    var foundStartIndex = -1;
-    var foundEndIndex = -1;
-    for (var i = 0; i < (totalItems * 2) - 1; i++) {
-        if (weirdBookcaseIds.indexOf(bookcasesOrderedIds[index]) !== -1) {
-            // Skip weird bookcase ids for simplicity
-            // It should rarely matter anyway
-        }
-        else {
-            var loc = mapPosAtBookcaseId[bookcasesOrderedIds[index]];
-            if (getMapBook(loc.floor, loc.x, loc.y) !== -1) {
-                if (foundStart === -1) {
-                    foundStart = index;
-                    foundStartIndex = i;
-                }
-                foundEnd = index;
-                foundEndIndex = i;
+    var found = 0;
+    var index = bookcaseOrderIndex;
+    for (var i = 0; i < sequence.length; i++) {
+        var loc = mapPosAtBookcaseId[bookcasesOrderedIds[index]];
+        var tile = getMapBook(loc.floor, loc.x, loc.y);
+        if (tile !== -1) {
+            if (tile === sequence[i]) {
+                found++;
             }
         }
         index += step;
         index %= bookcasesOrderedIds.length;
     }
+    if (found === foundItemsCount) {
+        return true;
+    }
+    return false;
+}
+
+function hintSequence(sequence, bookcaseOrderIndex) {
+    var step = 13;
     
-    var mappedBooks = [];
-    var length = foundEndIndex - foundStartIndex + 1;
-    if (length <= totalItems) {
-        index = foundStart - (totalItems - length) * step;
-        while (index < 0) {
-            index += bookcasesOrderedIds.length;
+    var index = bookcaseOrderIndex;
+    for (var i = 0; i < sequence.length; i++) {
+        var bookcaseId = bookcasesOrderedIds[index];
+        var bookId = sequence[i];
+        var loc = mapPosAtBookcaseId[bookcaseId];
+        var tile = getMapBook(loc.floor, loc.x, loc.y);
+        if (tile === -1) {
+            setMapBook(loc.floor, loc.x, loc.y, MAP_HINT);
         }
         
-        for (var i = 0; i < length + 2 * (totalItems - length); i++) {
-            var bookcaseId = bookcasesOrderedIds[index];
-            hintBookcaseIds.push(bookcaseId);
-            var loc = mapPosAtBookcaseId[bookcaseId];
-            if (getMapBook(loc.floor, loc.x, loc.y) === -1) {
-                setMapBook(loc.floor, loc.x, loc.y, MAP_HINT);
+        if (tile === -1 || tile === MAP_HINT) {
+            if (bookId === MAP_MANUSCRIPT) {
+                manuscriptHints.push(bookcaseId);
             }
-            if (debug) {
-                mappedBooks.push(getMapBook(loc.floor, loc.x, loc.y));
+            else {
+                var hintsObj = hints[bookcaseId];
+                if (!hintsObj) {
+                    hintsObj = {
+                        bookIds: []
+                    };
+                    hints[bookcaseId] = hintsObj;
+                }
+                
+                hintsObj.bookIds.push(bookId);
+                books[bookId].hints.push(bookcaseId);
             }
-            index += step;
-            index %= bookcasesOrderedIds.length;
+        }
+        index += step;
+        index %= bookcasesOrderedIds.length;
+    }
+}
+
+function clearHints() {
+    for (var bookcaseId in hints) {
+        var loc = mapPosAtBookcaseId[bookcaseId];
+        if (getMapBook(loc.floor, loc.x, loc.y) === MAP_HINT) {
+            setMapBook(loc.floor, loc.x, loc.y, -1);
         }
     }
-    if (debug) {
+    for (var i = 0; i < manuscriptHints.length; i++) {
+        var bookcaseId = manuscriptHints[i];
+        var loc = mapPosAtBookcaseId[bookcaseId];
+        if (getMapBook(loc.floor, loc.x, loc.y) === MAP_HINT) {
+            setMapBook(loc.floor, loc.x, loc.y, -1);
+        }
+    }
+    for (var i = 0; i < books.length; i++) {
+        books[i].hints = [];
+    }
+    manuscriptHints = [];
+    hints = {};
+}
+
+function recalculateHints(automap) {
+    if (automap === undefined) automap = $(".inp-automap").is(":checked");
+
+    var weirdBookcaseIds = [525, 515, 511, 521, 526, 529, 536, 535, 533];
+    
+    var A = 10;
+    var B = 11;
+    var C = 12;
+    var D = 13;
+    var E = 14;
+    var F = 15;
+    var Z = 35;
+    var sequences = [
+        [Z,4,Z,5,6,A,9,Z,Z,2,B,0,Z,3,Z,1,Z,F,8,7,Z,D,Z,E,Z,C],
+        [Z,4,Z,5,6,A,9,Z,Z,2,B,0,F,Z,3,Z,1,Z,E,8,7,Z,D,Z,Z,C],
+        [3,F,Z,1,5,Z,Z,2,Z,4,Z,B,0,Z,D,Z,E,Z,8,7,6,A,9,Z,Z,C],
+        [2,Z,3,Z,1,Z,4,Z,0,Z,Z,8,7,Z,D,Z,5,6,A,9,Z,B,Z,C,E,F],
+        [2,A,B,6,4,Z,F,Z,D,Z,0,Z,Z,9,Z,Z,3,Z,5,8,7,E,Z,1,Z,C],
+    ];
+
+    var step = 13;
+    var totalItems = books.length + 10;
+    var foundItemsCount = books.filter(x => x.pos !== -1).length + manuscripts.length;
+    var index;
+    
+    clearHints();
+    if (foundItemsCount === 0) {
+        // Don't show hints when there is no information
+        return;
+    }
+    
+    var foundPossibilities = 0;
+    var possibleSequence, possibleStartIndex;
+    for (var seqIndex = 0; seqIndex < sequences.length; seqIndex++) {
+        for (var i = 0; i < bookcasesOrderedIds.length; i++) {
+            if (testSequence(sequences[seqIndex], i, foundItemsCount)) {
+                index = i;
+                hintSequence(sequences[seqIndex], i);
+                
+                foundPossibilities++;
+                possibleSequence = sequences[seqIndex];
+                possibleStartIndex = i;
+            }
+        }
+    }
+    
+    if (debug) console.log("possibilities", foundPossibilities);
+    if (debug && books.filter(x => x.pos !== -1).length === books.length) {
+        var mappedBooks = [];
+        if (foundPossibilities === 1) {
+            index = possibleStartIndex;
+            for (var i = 0; i < possibleSequence.length; i++) {
+                var loc = mapPosAtBookcaseId[bookcasesOrderedIds[index]];
+                var tile = getMapBook(loc.floor, loc.x, loc.y);
+                mappedBooks.push(tile);
+                index += step;
+                index %= bookcasesOrderedIds.length;
+            }
+        }
         console.log(encodeArray(mappedBooks).join(","));
+    }
+    
+    if (automap) {
+        var booksAutomapped = 0;
+        for (var i = 0; i < books.length; i++) {
+            var book = books[i];
+            if (book.hints.length === 1) {
+                mapBook(i, book.hints[0]);
+                booksAutomapped++;
+            }
+        }
+        if (manuscriptHints.length + manuscripts.length === 10) {
+            for (var i = 0; i < manuscriptHints.length; i++) {
+                mapManuscript(manuscriptHints[i]);
+            }
+        }
+        if (booksAutomapped > 0) {
+            recalculateHints();
+        }
     }
 }
 
 function onBookClick(bookId) {
 	if (selectedBookcaseId !== -1) {
 		mapBook(bookId, selectedBookcaseId);
+        recalculateHints();
 	}
 	else {
 		if (books[bookId].collected) {
@@ -432,6 +554,7 @@ function onBookClick(bookId) {
 			books[bookId].collected = true;
 			$(".book").eq(bookId).addClass("collected-book");
 		}
+        requestRerender = true;
 	}
 }
 
@@ -532,7 +655,7 @@ function generateCode(compress) {
         }
 	}
 	$("#book-data-inp").val(code);
-	window.requestAnimationFrame(render);
+    requestRerender = true;
 }
 
 function parseCode(code) {
@@ -559,7 +682,7 @@ function parseCode(code) {
             mapBook(bookId, bookcaseId);
         }
 	}
-	window.requestAnimationFrame(render);
+    requestRerender = true;
 }
 
 function encode(num, padNum) {
@@ -595,8 +718,8 @@ $(document).ready(function() {
         if ($(this).hasClass("manuscript")) {
             if (selectedBookcaseId !== -1) {
                 mapManuscript(selectedBookcaseId);
+                recalculateHints();
             }
-            recalculateHints();
             return;
         }
         
@@ -608,18 +731,19 @@ $(document).ready(function() {
 			}
 		}
 		onBookClick(bookId);
-        recalculateHints();
-		window.requestAnimationFrame(render);
+        requestRerender = true;
 	});
 	
 	$(".book-names").on("contextmenu", ".book", function(e) {
 		e.preventDefault();
         if ($(this).hasClass("manuscript")) {
-            for (var i = 0; i < manuscripts.length; i++) {
-                unmapBookcase(manuscripts[i].pos);
-                i--;
+            if (manuscripts.length > 0) {
+                for (var i = 0; i < manuscripts.length; i++) {
+                    unmapBookcase(manuscripts[i].pos);
+                    i--;
+                }
+                recalculateHints(false);
             }
-            recalculateHints();
             return;
         }
         
@@ -633,62 +757,34 @@ $(document).ready(function() {
 		var pos = books[bookId].pos;
 		if (pos != -1) {
 			unmapBookcase(pos);
-            recalculateHints();
+            recalculateHints(false);
 		}
         lastHoverBookcaseId = -1;
-		window.requestAnimationFrame(render);
+        requestRerender = true;
 	});
 	
 	$(".book-names").on("mouseenter", ".book", function(e) {
         if ($(this).hasClass("manuscript")) {
-            hoveringManuscripts = true;
-            return;
+            lastHoverBookId = MAP_MANUSCRIPT;
+        }
+        else {
+            var bookId = -1;
+            for (var i = 0; i < books.length; i++) {
+                if (books[i].name === $(e.target).text()) {
+                    bookId = i;
+                    break;
+                }
+            }
+            lastHoverBookId = bookId;
         }
     
-		var bookId = -1;
-		for (var i = 0; i < books.length; i++) {
-			if (books[i].name === $(e.target).text()) {
-				bookId = i;
-				break;
-			}
-		}
-		
-		var bookcaseId = books[bookId].pos;
-		if (bookcaseId === -1 || bookcaseId === lastHoverBookcaseId) {
-			return;
-		}
-		lastHoverBookcaseId = bookcaseId;
-		window.requestAnimationFrame(render);
+        requestRerender = true;
 	});
 	
 	$(".book-names").on("mouseleave", ".book", function(e) {
-        if ($(this).hasClass("manuscript")) {
-            hoveringManuscripts = false;
-            return;
-        }
-    
-		var bookId = -1;
-		for (var i = 0; i < books.length; i++) {
-			if (books[i].name === $(e.target).text()) {
-				bookId = i;
-				break;
-			}
-		}
-		
-		var bookcaseId = books[bookId].pos;
-		if (bookcaseId === -1) {
-			return;
-		}
-		lastHoverBookcaseId = -1;
-		window.requestAnimationFrame(render);
+        lastHoverBookId = -1;
+        requestRerender = true;
 	});
-    
-    $(".section").on("mouseleave", "canvas", function(e) {
-		if (lastHoverBookcaseId !== -1) {
-            lastHoverBookcaseId = -1;
-			window.requestAnimationFrame(render);
-		}
-    });
 	
 	$(".section").on("mousedown", "canvas", function(e) {
 		if (e.button != 0) return;
@@ -711,7 +807,7 @@ $(document).ready(function() {
 			}
 		}
 		
-		if (!found) {
+		if (!found || (floor === 0 && section === 3)) {
 			return;
 		}
 		
@@ -719,6 +815,9 @@ $(document).ready(function() {
 		x += start.x;
 		y += start.y;
 		
+        var bookcaseId = bookcaseIds[getMapPos(floor, x, y)];
+        var book = books.filter(x => x.pos === bookcaseId)[0];
+        
         if (debug && e.ctrlKey) {
             tempArray.push(bookcaseIds[getMapPos(floor, x, y)]);
         }
@@ -729,8 +828,12 @@ $(document).ready(function() {
             var text = "[ " + tempArray.join(", ") + " ]";
             console.log(text);
         }
+        else if (book !== undefined) {
+            selectBookcase(-1);
+            onBookClick(book.id);
+        }
         else {
-            selectBookcase(bookcaseIds[getMapPos(floor, x, y)]);
+            selectBookcase(bookcaseId);
         }
 		
 		return false;
@@ -756,7 +859,7 @@ $(document).ready(function() {
 			}
 		}
 		
-		if (!found) {
+		if (!found || (floor === 0 && section === 3)) {
 			return false;
 		}
 		
@@ -768,7 +871,7 @@ $(document).ready(function() {
 		
 		if (bookcaseId !== -1 && bookcaseId !== undefined) {
 			unmapBookcase(bookcaseId);
-            recalculateHints();
+            recalculateHints(false);
 		}
 		return false;
 	});
@@ -783,7 +886,7 @@ $(document).ready(function() {
 		else if (clazz == "canv-top") { floor = 2; }
 		
 		for (section = 0; section < nSections * nFloors; section++) {
-			var ps = paintStart[section % nSections];
+            var ps = paintStart[section % nSections];
 			x = Math.floor((e.offsetX - ps.x) / step);
 			y = Math.floor((e.offsetY - ps.y) / step);
 			if (x >= 0 && x < mapX && y >= 0 && y < mapY) {
@@ -792,10 +895,10 @@ $(document).ready(function() {
 			}
 		}
 		
-		if (!found) {
+		if (!found || (floor === 0 && section === 3)) {
             if (lastHoverBookcaseId !== -1) {
                 lastHoverBookcaseId = -1;
-                window.requestAnimationFrame(render);
+                requestRerender = true;
             }
 			return;
 		}
@@ -806,18 +909,14 @@ $(document).ready(function() {
 		
 		var bookcaseId = bookcaseIds[getMapPos(floor, x, y)];
         
-		var requestUpdate = false;
 		if (lastHoverBookcaseId !== -1 && lastHoverBookcaseId !== bookcaseId) {
-			requestUpdate = true;
+            requestRerender = true;
 		}
 		if (bookcaseId !== -1 && bookcaseId !== lastHoverBookcaseId) {
-			requestUpdate = true;
+            requestRerender = true;
 		}
 		lastHoverBookcaseId = bookcaseId;
 		
-		if (requestUpdate) {
-			window.requestAnimationFrame(render);
-		}
 		return false;
 	});
 	
@@ -837,6 +936,12 @@ $(document).ready(function() {
 			}
 		}
 	});
+    
+    $(".inp-automap").change(function() {
+        if ($(this).is(":checked")) {
+            recalculateHints();
+        }
+    });
 	
 	$(window).mousedown(function(e) {
 		selectBookcase(-1);

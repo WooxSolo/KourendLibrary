@@ -119,3 +119,12 @@ option {
    -webkit-text-stroke-width: 1px;
    -webkit-text-stroke-color: black;
 }
+
+.automap {
+    z-index: 10;
+    position: absolute;
+    top: 350px;
+    left: 250px;
+    width: 170px;
+    text-align: center;
+}
