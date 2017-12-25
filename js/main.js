@@ -374,7 +374,6 @@ function selectBookcase(bookcaseId) {
 	}
 	else {
 		$(".book-names").addClass("highlight");
-        $(".book-section").trigger("resize");
 	}
     
     requestRerender = true;
@@ -760,6 +759,7 @@ $(document).ready(function() {
             recalculateHints(false);
 		}
         lastHoverBookcaseId = -1;
+        $(".book").removeClass("book-highlight");
         requestRerender = true;
 	});
 	
@@ -916,6 +916,14 @@ $(document).ready(function() {
             requestRerender = true;
 		}
 		lastHoverBookcaseId = bookcaseId;
+        $(".book").removeClass("book-highlight");
+        
+        var selectedBooks = books.filter(function(value, index) {
+            return bookcaseId !== undefined && value.pos === bookcaseId;
+        });
+        if (selectedBooks.length > 0) {
+            $(".book").eq(selectedBooks[0].id).addClass("book-highlight");
+        }
 		
 		return false;
 	});

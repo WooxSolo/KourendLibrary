@@ -47,6 +47,11 @@ option {
 	background: #E2E2E2;
 }
 
+.book-highlight {
+    outline: 4px solid black;
+    position: relative;
+}
+
 .book-names {
     position: relative;
 	border: 1px solid #CCC;
