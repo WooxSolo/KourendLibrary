@@ -47,6 +47,15 @@ option {
 	background: #E2E2E2;
 }
 
+.book-number {
+    float: left;
+    width: 18px;
+    text-align: center;
+    padding-right: 6px;
+    border-right: 1px solid #E2E2E2;
+    margin-right: 6px;
+}
+
 .book-highlight {
     outline: 4px solid black;
     position: relative;
